@@ -3,3 +3,5 @@
 *.npy
 .*
 runs/
+!.github/
+!.github/**

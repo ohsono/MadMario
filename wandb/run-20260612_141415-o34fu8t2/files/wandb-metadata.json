@@ -1,0 +1,37 @@
+{
+  "os": "Linux-7.0.10-1-t2-noble-x86_64-with-glibc2.39",
+  "python": "CPython 3.13.13",
+  "startedAt": "2026-06-12T21:14:15.820856Z",
+  "args": [
+    "runs/single",
+    "runs/shared",
+    "runs/pbt",
+    "--out",
+    "docs/plots",
+    "--wandb-project",
+    "madmario-eval"
+  ],
+  "program": "/home/ohsono/Projects/MadMario/plot_compare.py",
+  "codePath": "plot_compare.py",
+  "codePathLocal": "plot_compare.py",
+  "git": {
+    "remote": "git@github.com:ohsono/MadMario.git",
+    "commit": "7a51138236ad54fe77cc93d0f29b4fc4e38e7d0f"
+  },
+  "email": "ohsono.email@gmail.com",
+  "root": "/home/ohsono/Projects/MadMario",
+  "host": "ohsono-MacBookPro",
+  "executable": "/home/ohsono/miniconda3/bin/python3",
+  "cpu_count": 6,
+  "cpu_count_logical": 12,
+  "disk": {
+    "/": {
+      "total": "156065861632",
+      "used": "111062659072"
+    }
+  },
+  "memory": {
+    "total": "16660602880"
+  },
+  "writerId": "uc23b93pxnd0w203vse51gt9pqqorr78"
+}

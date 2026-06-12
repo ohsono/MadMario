@@ -1,0 +1,45 @@
+_wandb:
+    value:
+        cli_version: 0.27.2
+        e:
+            uc23b93pxnd0w203vse51gt9pqqorr78:
+                args:
+                    - runs/single
+                    - runs/shared
+                    - runs/pbt
+                    - --out
+                    - docs/plots
+                    - --wandb-project
+                    - madmario-eval
+                codePath: plot_compare.py
+                codePathLocal: plot_compare.py
+                cpu_count: 6
+                cpu_count_logical: 12
+                disk:
+                    /:
+                        total: "156065861632"
+                        used: "111062659072"
+                email: ohsono.email@gmail.com
+                executable: /home/ohsono/miniconda3/bin/python3
+                git:
+                    commit: 7a51138236ad54fe77cc93d0f29b4fc4e38e7d0f
+                    remote: git@github.com:ohsono/MadMario.git
+                host: ohsono-MacBookPro
+                memory:
+                    total: "16660602880"
+                os: Linux-7.0.10-1-t2-noble-x86_64-with-glibc2.39
+                program: /home/ohsono/Projects/MadMario/plot_compare.py
+                python: CPython 3.13.13
+                root: /home/ohsono/Projects/MadMario
+                startedAt: "2026-06-12T21:14:15.820856Z"
+                writerId: uc23b93pxnd0w203vse51gt9pqqorr78
+        m: []
+        python_version: 3.13.13
+        t:
+            "3":
+                - 2
+                - 13
+            "4": 3.13.13
+            "5": 0.27.2
+            "12": 0.27.2
+            "13": linux-x86_64

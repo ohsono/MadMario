@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 import torch
 
-from config import AgentConfig
-from agent import Mario
+from madmario.config import AgentConfig
+from madmario.agent import Mario
 
 STATE_DIM = (4, 84, 84)
 ACTION_DIM = 2

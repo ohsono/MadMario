@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 import gymnasium as gym
-from wrappers import SkipFrame
+from madmario.wrappers import SkipFrame
 
 
 class _FakeEnv(gym.Env):

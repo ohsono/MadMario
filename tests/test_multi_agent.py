@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from config import AgentConfig
-from agent import Mario
-from multi_agent import epsilon_ladder, perturb_hparams, pbt_partition
+from madmario.config import AgentConfig
+from madmario.agent import Mario
+from madmario.multi_agent import epsilon_ladder, perturb_hparams, pbt_partition
 
 
 # ---------------------------------------------------------------------------

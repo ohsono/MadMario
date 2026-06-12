@@ -131,24 +131,32 @@ update_state(episode=e, step=mario.curr_step, epsilon=mario.exploration_rate)
 
 ```
 MadMario/
-├── config.py          Dataclass config for env / agent / wandb / training
-├── environment.py     Gymnasium pipeline factory (SkipFrame→Grayscale→Resize→Stack)
-├── agent.py           Mario DQN agent — act / cache / learn / save / load
-├── neural.py          MarioNet: (Conv+ReLU)×3 → Flatten → (Linear+ReLU) → Q-values
-├── replay.py          CPU-side ReplayBuffer (numpy storage, per-batch GPU transfer)
-├── wrappers.py        SkipFrame gymnasium wrapper
-├── metrics.py         MetricLogger with optional W&B streaming
-├── autonomous.py      CurriculumManager, PlateauDetector, SelfImprovementLoop
-├── mcp_server.py      MCP server — 5 Claude-callable tools
-├── multi_agent.py     Multi-agent v2: shared actor-learner (Ape-X) + PBT
-├── train.py           CLI entry point  (train / evaluate subcommands)
-├── plot_compare.py    Cross-run comparison plots (PNG + optional W&B)
-├── main.py            Legacy entry point (delegates to train.py)
-├── docs/              PLAN.md · COMPARISON.md · THEORY.md · plots/
-├── tests/             46 pytest tests covering all core modules
-├── pyproject.toml     Build config and pytest settings
-└── requirements.txt   Pinned dependencies
+├── madmario/              the installable package (pip install -e .)
+│   ├── config.py          Dataclass config for env / agent / wandb / training
+│   ├── environment.py     Gymnasium pipeline factory (SkipFrame→Grayscale→Resize→Stack)
+│   ├── agent.py           Mario DQN agent — act / cache / learn / save / load
+│   ├── neural.py          MarioNet: (Conv+ReLU)×3 → Flatten → (Linear+ReLU) → Q-values
+│   ├── replay.py          CPU-side ReplayBuffer (numpy storage, per-batch GPU transfer)
+│   ├── wrappers.py        SkipFrame gymnasium wrapper
+│   ├── metrics.py         MetricLogger with optional W&B streaming
+│   ├── autonomous.py      CurriculumManager, PlateauDetector, SelfImprovementLoop
+│   ├── mcp_server.py      MCP server — 5 Claude-callable tools
+│   ├── multi_agent.py     Multi-agent v2: shared actor-learner (Ape-X) + PBT
+│   ├── cli.py             Typer CLI (train / evaluate) — console script `madmario`
+│   └── plotting.py        Cross-run comparison plots — `madmario-compare`
+├── train.py               Shim → madmario.cli  (python train.py train still works)
+├── plot_compare.py        Shim → madmario.plotting
+├── mcp_server.py          Shim → madmario.mcp_server (keeps MCP configs working)
+├── main.py                Legacy shim (delegates to the CLI)
+├── docs/                  PLAN · COMPARISON · THEORY · EVALUATION · plots/
+├── tests/                 46 pytest tests covering all core modules
+├── .github/workflows/     CI: pytest + CLI smoke test on every push/PR
+├── pyproject.toml         Packaging, console scripts, pytest settings
+└── requirements.txt       Pinned dependencies (Python 3.13+)
 ```
+
+After `pip install -e .` three console scripts are available: `madmario`
+(train/evaluate), `madmario-compare` (plots), `madmario-mcp` (MCP server).
 
 ---
 

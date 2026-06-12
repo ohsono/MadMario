@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from metrics import MetricLogger
+from madmario.metrics import MetricLogger
 
 
 def make_logger(tmp_path: Path) -> MetricLogger:

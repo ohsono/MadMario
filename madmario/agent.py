@@ -17,9 +17,9 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 
-from config import AgentConfig
-from neural import MarioNet
-from replay import ReplayBuffer
+from madmario.config import AgentConfig
+from madmario.neural import MarioNet
+from madmario.replay import ReplayBuffer
 
 
 class Mario:

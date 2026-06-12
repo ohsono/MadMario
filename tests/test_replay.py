@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import pytest
-from replay import ReplayBuffer
+from madmario.replay import ReplayBuffer
 
 
 DEVICE = torch.device("cpu")

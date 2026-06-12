@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
 
-from config import Config, MultiAgentConfig
+from madmario.config import Config, MultiAgentConfig
 
 # fork() after torch initializes its OpenMP thread pool deadlocks children on
 # their first tensor op (observed: actors parked in futex_do_wait for hours).
@@ -114,8 +114,8 @@ def _actor_worker(
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    from environment import make_env
-    from neural import MarioNet
+    from madmario.environment import make_env
+    from madmario.neural import MarioNet
 
     env = make_env(cfg.env, seed=seed)
     net = MarioNet(cfg.state_dim, env.action_space.n).float()
@@ -187,7 +187,7 @@ class SharedExperienceCoordinator:
         self.mac: MultiAgentConfig = cfg.multi_agent
 
     def run(self, episodes: int, save_dir: Path) -> List[Dict[str, Any]]:
-        from agent import Mario
+        from madmario.agent import Mario
 
         n = self.mac.num_agents
         per_actor = max(1, episodes // n)
@@ -339,8 +339,8 @@ def _pbt_worker(
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    from environment import make_env
-    from agent import Mario
+    from madmario.environment import make_env
+    from madmario.agent import Mario
 
     agent_dir = save_dir / f"agent_{agent_id}"
     agent_dir.mkdir(parents=True, exist_ok=True)

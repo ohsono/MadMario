@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from config import AutonomousConfig, EnvConfig
+from madmario.config import AutonomousConfig, EnvConfig
 
 # Ordered list of (world, stage) pairs for curriculum progression
 CURRICULUM_LEVELS: List[Tuple[int, int]] = [

@@ -1,9 +1,9 @@
-"""Legacy entry point — delegates to train.py.
+"""Legacy entry point — delegates to madmario.cli.
 
 Kept for backwards compatibility with existing docs/scripts.
-Use `python train.py train` for the full-featured CLI.
+Use `python train.py train` or the `madmario` console script.
 """
-from train import app
+from madmario.cli import app
 
 if __name__ == "__main__":
     app(["train"])

@@ -19,8 +19,8 @@ from gymnasium.wrappers import (
 )
 from nes_py.wrappers import JoypadSpace
 
-from config import EnvConfig
-from wrappers import SkipFrame
+from madmario.config import EnvConfig
+from madmario.wrappers import SkipFrame
 
 
 def make_env(config: EnvConfig, seed: Optional[int] = None) -> gym.Env:

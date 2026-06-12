@@ -1,6 +1,6 @@
 import pytest
 import torch
-from neural import MarioNet
+from madmario.neural import MarioNet
 
 
 def make_net(out: int = 2) -> MarioNet:
