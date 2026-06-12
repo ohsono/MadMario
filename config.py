@@ -75,7 +75,14 @@ class AutonomousConfig:
 class MultiAgentConfig:
     enabled: bool = False
     num_agents: int = 4
-    sync_interval: int = 50  # episodes between weight broadcasts
+    mode: str = "shared"  # "shared" (Ape-X actor-learner) | "pbt" (population)
+    # shared mode: actor i uses fixed eps = eps_base * eps_alpha**(i/(N-1))
+    eps_base: float = 0.4
+    eps_alpha: float = 1 / 128
+    weight_sync_steps: int = 200  # gradient steps between weight broadcasts
+    # pbt mode
+    pbt_interval: int = 25     # episodes between PBT exploit/explore events
+    pbt_quantile: float = 0.25  # truncation-selection quantile
 
 
 @dataclass

@@ -37,6 +37,7 @@ class Mario:
         self.cfg = config
 
         self.curr_step = 0
+        self.learn_step_count = 0  # gradient steps taken (used by train_step)
         self.exploration_rate = config.exploration_rate
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -116,10 +117,35 @@ class Mario:
             return None, None
         if self.curr_step % self.cfg.learn_every != 0:
             return None, None
+        # Buffer must hold at least one batch regardless of burnin setting
+        if len(self.memory) < self.cfg.batch_size:
+            return None, None
 
         if self.curr_step % self.cfg.sync_every == 0:
             self.sync_Q_target()
         if self.curr_step % self.cfg.save_every == 0:
+            self.save()
+
+        state, next_state, action, reward, done = self.recall()
+        td_est = self.td_estimate(state, action)
+        td_tgt = self.td_target(reward, next_state, done)
+        loss = self.update_Q_online(td_est, td_tgt)
+        return td_est.mean().item(), loss
+
+    def train_step(self) -> Tuple[Optional[float], Optional[float]]:
+        """One unconditional gradient step from the buffer (for external learners,
+        e.g. the shared-experience multi-agent coordinator, which drives cadence
+        itself). Target sync / checkpointing are keyed to gradient steps at the
+        same effective rate as learn(): sync_every/learn_every env-steps."""
+        if len(self.memory) < self.cfg.batch_size:
+            return None, None
+
+        self.learn_step_count += 1
+        sync_period = max(1, self.cfg.sync_every // self.cfg.learn_every)
+        save_period = max(1, self.cfg.save_every // self.cfg.learn_every)
+        if self.learn_step_count % sync_period == 0:
+            self.sync_Q_target()
+        if self.learn_step_count % save_period == 0:
             self.save()
 
         state, next_state, action, reward, done = self.recall()

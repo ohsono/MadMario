@@ -12,7 +12,9 @@ Examples:
 """
 from __future__ import annotations
 
+import json
 import random
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -47,10 +49,15 @@ def train(
     wandb_project: str = typer.Option("madmario"),
     wandb_entity: Optional[str] = typer.Option(None),
     autonomous: bool = typer.Option(False, help="Curriculum + self-improvement"),
-    multi_agent: bool = typer.Option(False, help="Parallel population training"),
+    multi_agent: bool = typer.Option(False, help="Parallel multi-agent training"),
+    ma_mode: str = typer.Option("shared", help="Multi-agent mode: shared | pbt"),
     num_agents: int = typer.Option(4, help="Agents for --multi-agent"),
+    pbt_interval: int = typer.Option(25, help="Episodes between PBT events"),
     burnin: int = typer.Option(100_000, help="Steps before training starts"),
     memory_size: int = typer.Option(100_000, help="Replay buffer capacity"),
+    eps_decay: float = typer.Option(
+        0.99999975, help="Per-step epsilon decay (single-agent / PBT workers)"
+    ),
 ) -> None:
     from config import (
         AgentConfig, AutonomousConfig, Config, EnvConfig,
@@ -59,14 +66,20 @@ def train(
 
     cfg = Config(
         env=EnvConfig(world=world, stage=stage),
-        agent=AgentConfig(burnin=burnin, memory_size=memory_size),
+        agent=AgentConfig(
+            burnin=burnin, memory_size=memory_size,
+            exploration_rate_decay=eps_decay,
+        ),
         wandb=WandbConfig(enabled=use_wandb, project=wandb_project, entity=wandb_entity),
         train=TrainConfig(
             episodes=episodes, seed=seed,
             checkpoint=checkpoint, save_dir=save_dir,
         ),
         autonomous=AutonomousConfig(enabled=autonomous),
-        multi_agent=MultiAgentConfig(enabled=multi_agent, num_agents=num_agents),
+        multi_agent=MultiAgentConfig(
+            enabled=multi_agent, mode=ma_mode, num_agents=num_agents,
+            pbt_interval=pbt_interval,
+        ),
     )
     _run(cfg)
 
@@ -138,9 +151,9 @@ def _run(cfg: "Config") -> None:  # noqa: F821
     _seed(cfg.train.seed)
 
     if cfg.multi_agent.enabled:
-        from multi_agent import MultiAgentCoordinator
+        from multi_agent import run_multi_agent
         sd = cfg.train.resolve_save_dir()
-        MultiAgentCoordinator(cfg).run(cfg.train.episodes, sd)
+        run_multi_agent(cfg, cfg.train.episodes, sd)
         return
 
     sd = cfg.train.resolve_save_dir()
@@ -179,6 +192,8 @@ def _run(cfg: "Config") -> None:  # noqa: F821
     )
 
     recent_rewards: list = []
+    history: list = []
+    t0 = time.time()
 
     for episode in range(cfg.train.episodes):
         obs, _ = env.reset()
@@ -202,6 +217,15 @@ def _run(cfg: "Config") -> None:  # noqa: F821
         recent_rewards.append(total_reward)
         if len(recent_rewards) > 100:
             recent_rewards.pop(0)
+        history.append(
+            {
+                "agent_id": 0,
+                "episode": episode,
+                "reward": total_reward,
+                "flag_get": flag_get,
+                "wall": time.time() - t0,
+            }
+        )
 
         update_state(
             episode=episode,
@@ -232,6 +256,9 @@ def _run(cfg: "Config") -> None:  # noqa: F821
     update_state(running=False)
     logger.close()
     env.close()
+    (sd / "history.json").write_text(
+        json.dumps({"mode": "single", "episodes": history}, indent=1)
+    )
 
 
 # Expose for import by tests / notebooks
