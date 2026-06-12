@@ -1,0 +1,25 @@
+# Core RL
+torch>=2.0
+numpy>=1.24
+gymnasium>=0.29
+gym>=0.26
+gym-super-mario-bros>=9.0
+nes-py>=9.0
+
+# Image processing
+scikit-image>=0.21
+opencv-python-headless>=4.8
+matplotlib
+
+# Observability
+wandb>=0.15
+
+# CLI
+typer>=0.9
+
+# MCP integration
+mcp>=1.0
+
+# Dev / test
+pytest>=8
+pytest-cov
