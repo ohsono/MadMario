@@ -138,6 +138,88 @@ def evaluate(
 
 
 # ---------------------------------------------------------------------------
+# record command — gameplay videos from a checkpoint
+# ---------------------------------------------------------------------------
+
+@app.command()
+def record(
+    checkpoint_path: Path = typer.Argument(..., help="Path to .chkpt file"),
+    out_dir: Path = typer.Option(Path("videos"), help="Where to write .mp4 files"),
+    n_episodes: int = typer.Option(3, help="Episodes to record"),
+    world: int = typer.Option(1),
+    stage: int = typer.Option(1),
+    epsilon: float = typer.Option(
+        0.0, help="Exploration rate during playback (e.g. an actor's ladder ε)"
+    ),
+    fps: int = typer.Option(15, help="Video fps (15 ≈ real-time with skip-4)"),
+    seed: int = typer.Option(0),
+    label: Optional[str] = typer.Option(
+        None, help="Filename prefix (defaults to checkpoint stem)"
+    ),
+) -> None:
+    """Replay a checkpoint and capture raw NES gameplay as MP4 videos.
+
+    Per-agent capture: for PBT pass each agent_<i>/ checkpoint; for shared
+    mode pass the learner checkpoint with each actor's --epsilon.
+    """
+    import cv2
+
+    from madmario.config import Config, EnvConfig
+    from madmario.environment import make_env
+    from madmario.agent import Mario
+
+    _seed(seed)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    prefix = label or checkpoint_path.stem
+
+    cfg = Config(env=EnvConfig(world=world, stage=stage))
+    env = make_env(cfg.env, seed=seed, render_mode="rgb_array")
+    mario = Mario(
+        state_dim=cfg.state_dim,
+        action_dim=env.action_space.n,
+        save_dir=checkpoint_path.parent,
+        config=cfg.agent,
+        checkpoint=checkpoint_path,
+    )
+    # Hold ε fixed during playback (act() would otherwise decay it)
+    mario.exploration_rate = epsilon
+    mario.cfg.exploration_rate_min = epsilon
+
+    for ep in range(n_episodes):
+        obs, _ = env.reset()
+        frames = [env.render()]
+        total, done, info = 0.0, False, {}
+        while not done:
+            action = mario.act(obs)
+            obs, rew, term, trunc, info = env.step(action)
+            frames.append(env.render())
+            total += rew
+            done = term or trunc or bool(info.get("flag_get"))
+
+        flag = bool(info.get("flag_get"))
+        name = f"{prefix}_eps{epsilon:g}_ep{ep}_r{total:.0f}{'_FLAG' if flag else ''}.mp4"
+        path = out_dir / name
+        h, w = frames[0].shape[:2]
+        writer = cv2.VideoWriter(
+            str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h)
+        )
+        if not writer.isOpened():  # codec fallback: MJPG avi always available
+            path = path.with_suffix(".avi")
+            writer = cv2.VideoWriter(
+                str(path), cv2.VideoWriter_fourcc(*"MJPG"), fps, (w, h)
+            )
+        for f in frames:
+            writer.write(cv2.cvtColor(f, cv2.COLOR_RGB2BGR))
+        writer.release()
+        print(
+            f"  ep {ep + 1}/{n_episodes}: reward={total:.1f} flag={flag} "
+            f"({len(frames)} frames) -> {path}"
+        )
+
+    env.close()
+
+
+# ---------------------------------------------------------------------------
 # Core training loop
 # ---------------------------------------------------------------------------
 

@@ -89,6 +89,22 @@ python plot_compare.py runs/single runs/shared runs/pbt --out docs/plots \
 python train.py evaluate checkpoints/.../mario_net_1.chkpt --n-episodes 20
 ```
 
+### Record gameplay videos
+```bash
+# Greedy playback of a checkpoint → MP4s (raw NES frames, not the 84×84 input)
+python train.py record checkpoints/.../mario_net_1.chkpt --out-dir videos
+
+# Per-agent capture:
+#   PBT — record each agent's own checkpoint
+python train.py record runs/pbt/agent_0/mario_net_0.chkpt --label pbt_agent0
+#   shared — one learner policy, replayed at each actor's ladder ε
+for eps in 0.4 0.079 0.016 0.003; do
+  python train.py record runs/shared/mario_net_0.chkpt --epsilon $eps --label actor
+done
+```
+Files are named `<label>_eps<ε>_ep<N>_r<reward>[_FLAG].mp4`; flag-get runs
+are tagged in the filename.
+
 ---
 
 ## MCP server (Claude Code integration)

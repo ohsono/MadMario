@@ -23,8 +23,18 @@ from madmario.config import EnvConfig
 from madmario.wrappers import SkipFrame
 
 
-def make_env(config: EnvConfig, seed: Optional[int] = None) -> gym.Env:
-    env = gym_super_mario_bros.make(config.env_name)
+def make_env(
+    config: EnvConfig,
+    seed: Optional[int] = None,
+    render_mode: Optional[str] = None,
+) -> gym.Env:
+    """Build the preprocessing pipeline.
+
+    render_mode="rgb_array" lets callers pull raw 256x240 NES RGB frames via
+    env.render() (e.g. for video capture) while the agent still observes the
+    84x84 grayscale stack.
+    """
+    env = gym_super_mario_bros.make(config.env_name, render_mode=render_mode)
     env = JoypadSpace(env, config.action_space)
     env = SkipFrame(env, skip=config.skip_frames)
     env = GrayscaleObservation(env, keep_dim=False)
