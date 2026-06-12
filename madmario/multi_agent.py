@@ -241,6 +241,8 @@ class SharedExperienceCoordinator:
         results_seen = 0
         expected = n * per_actor
         recent_loss: Optional[float] = None
+        best_mean = -float("inf")  # pooled 20-ep rolling mean high-water mark
+        best_path = save_dir / "best.chkpt"
         t0 = time.time()
         last_progress = time.time()
 
@@ -292,6 +294,20 @@ class SharedExperienceCoordinator:
                 history.append(r)
                 results_seen += 1
                 last_progress = time.time()
+
+                # Snapshot the learner on every new pooled 20-ep mean high —
+                # a late-run collapse can no longer destroy the best policy
+                # found (see docs/EVALUATION.md, 600-episode analysis).
+                if results_seen >= 20:
+                    mean20 = float(np.mean([h["reward"] for h in history[-20:]]))
+                    if mean20 > best_mean:
+                        best_mean = mean20
+                        mario.save(best_path)
+                        print(
+                            f"[Shared] new best 20-ep mean {best_mean:.1f} "
+                            f"at ep {results_seen} -> {best_path}"
+                        )
+
                 if results_seen % 10 == 0:
                     rewards = [h["reward"] for h in history[-20:]]
                     print(

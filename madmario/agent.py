@@ -158,9 +158,12 @@ class Mario:
     # Persistence
     # ------------------------------------------------------------------
 
-    def save(self) -> Path:
-        slot = int(self.curr_step // self.cfg.save_every)
-        save_path = self.save_dir / f"mario_net_{slot}.chkpt"
+    def save(self, path: Optional[Path] = None) -> Path:
+        if path is not None:
+            save_path = Path(path)
+        else:
+            slot = int(self.curr_step // self.cfg.save_every)
+            save_path = self.save_dir / f"mario_net_{slot}.chkpt"
         torch.save(
             {
                 "model": self.net.state_dict(),

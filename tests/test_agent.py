@@ -153,3 +153,10 @@ def test_load_missing_file_raises(tmp_path):
     mario = make_agent(tmp_path)
     with pytest.raises(FileNotFoundError):
         mario.load(tmp_path / "nonexistent.chkpt")
+
+
+def test_save_to_explicit_path(tmp_path):
+    mario = make_agent(tmp_path)
+    target = tmp_path / "best.chkpt"
+    out = mario.save(target)
+    assert out == target and target.exists()

@@ -62,3 +62,20 @@ def test_sample_too_large_raises():
     _push_n(buf, 10)
     with pytest.raises(ValueError):
         buf.sample(20, DEVICE)
+
+
+def test_storage_is_uint8():
+    buf = ReplayBuffer(capacity=10)
+    _push_n(buf, 3)
+    state, next_state, *_ = buf.memory[0]
+    assert state.dtype == np.uint8
+    assert next_state.dtype == np.uint8
+
+
+def test_uint8_roundtrip_precision():
+    buf = ReplayBuffer(capacity=10)
+    s = np.random.rand(*STATE_SHAPE).astype(np.float32)
+    for _ in range(5):
+        buf.push(s, s, action=0, reward=1.0, done=False)
+    out, *_ = buf.sample(5, DEVICE)
+    assert torch.allclose(out[0], torch.tensor(s), atol=1.0 / 255.0)

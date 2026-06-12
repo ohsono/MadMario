@@ -1,8 +1,12 @@
-"""CPU-side replay buffer — stores raw numpy arrays, converts to tensors on sample.
+"""CPU-side replay buffer — uint8 frame storage, float32 tensors on sample.
 
-Bug fix: original code stored CUDA tensors in the deque, requiring ~22 GB VRAM
-for a 100K buffer.  Storing float32 numpy arrays keeps the buffer in RAM (~1.8 GB)
-and only moves a 32-sample batch to the device during each learn step.
+Two memory optimizations vs the original tutorial:
+1. Buffer lives in RAM as numpy (original stored CUDA tensors: ~22 GB VRAM
+   at 100 K capacity); only the sampled batch moves to the device.
+2. Observations are stored as uint8 (the [0,1] float32 frames are scaled by
+   255) — 8x smaller, so a 100 K buffer of stacked 4x84x84 frame pairs fits
+   in ~5.6 GB instead of ~45 GB. Quantization error is <=1/510 per pixel,
+   which is exactly the precision the original uint8 NES frames had anyway.
 """
 import random
 from collections import deque
@@ -16,6 +20,12 @@ class ReplayBuffer:
     def __init__(self, capacity: int):
         self.memory: deque = deque(maxlen=capacity)
 
+    @staticmethod
+    def _encode(frames) -> np.ndarray:
+        """[0,1] float frames -> uint8."""
+        x = np.asarray(frames, dtype=np.float32).clip(0.0, 1.0)
+        return (x * 255.0).round().astype(np.uint8)
+
     def push(
         self,
         state,
@@ -26,8 +36,8 @@ class ReplayBuffer:
     ) -> None:
         self.memory.append(
             (
-                np.array(state, dtype=np.float32),
-                np.array(next_state, dtype=np.float32),
+                self._encode(state),
+                self._encode(next_state),
                 int(action),
                 float(reward),
                 bool(done),
@@ -38,8 +48,8 @@ class ReplayBuffer:
         batch = random.sample(self.memory, batch_size)
         state, next_state, action, reward, done = zip(*batch)
         return (
-            torch.tensor(np.array(state), dtype=torch.float32, device=device),
-            torch.tensor(np.array(next_state), dtype=torch.float32, device=device),
+            torch.tensor(np.array(state), dtype=torch.float32, device=device) / 255.0,
+            torch.tensor(np.array(next_state), dtype=torch.float32, device=device) / 255.0,
             torch.tensor(action, dtype=torch.long, device=device),
             torch.tensor(reward, dtype=torch.float32, device=device),
             torch.tensor(done, dtype=torch.bool, device=device),
