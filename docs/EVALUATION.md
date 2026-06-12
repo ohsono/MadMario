@@ -72,6 +72,43 @@ grows with budget, and 37 episodes/agent only allows 3 selection rounds.
   high-ε actors; the final 20-ep mean (pooled, time-ordered) and the
   near-greedy actors' curves are the fair policy-quality measures.
 
+## Follow-up: 600-episode shared run — did Mario get the flag?
+
+**No flags in 600 episodes** (4 actors × 150, 110,336 transitions, 36,778
+gradient steps, 57 min). Best single episode reached reward 1331 — roughly
+the mid-level pipe section; a flag run pays ≈3000.
+
+More interesting than the missed flag is the **shape** of the curve: the
+20-episode mean peaked at 727 around pooled episode 467, oscillated, then
+**collapsed to ~311 over the final 60 episodes** — below where the
+148-episode run had ended (904).
+
+![600-episode shared run](plots/shared_long_600ep.png)
+
+This is a textbook instability, and the likely causes are visible in the
+configuration:
+
+1. **Replay buffer far smaller than the data stream.** Capacity was 15 K
+   while the run generated 110 K transitions — by the end, the buffer held
+   only the most recent ~14 % of experience, almost all of it produced by
+   near-greedy actors executing the *current* policy. Early diverse
+   exploration data was evicted, the data distribution narrowed, and the
+   value function drifted (catastrophic forgetting / off-policy feedback
+   loop). Ape-X counters exactly this with replay capacities in the millions
+   plus prioritized sampling.
+2. **No best-checkpoint tracking.** The learner saved its weights once at
+   run end — i.e., the *post-collapse* policy. The episode-467 policy was
+   never persisted.
+3. **Short horizon (γ=0.9)** discounts the flag reward to near-zero from
+   more than ~50 steps away; reaching it at this budget would mostly be luck.
+
+**Concrete fixes, in order of expected impact:** (a) store frames as `uint8`
+to fit a 100 K+ buffer in RAM (8× smaller than float32), (b) save a
+`best.chkpt` whenever the pooled 20-episode mean makes a new high,
+(c) prioritized experience replay, (d) γ 0.9 → 0.99 with a longer budget.
+Flag-get on 1-1 typically needs ~10 K episodes even for well-tuned DQN —
+the original tutorial trained for 40 K.
+
 ## Reproduce
 
 ```bash
