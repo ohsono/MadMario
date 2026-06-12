@@ -6,7 +6,7 @@ build-backend = "setuptools.backends.legacy:build"
 name = "madmario"
 version = "2.0.0"
 description = "Super Mario DQN — modernised, multi-agent, MCP-enabled"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 dependencies = [
     "torch>=2.0",
     "numpy>=1.24",

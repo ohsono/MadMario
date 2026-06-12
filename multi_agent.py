@@ -38,6 +38,14 @@ import torch
 
 from config import Config, MultiAgentConfig
 
+# fork() after torch initializes its OpenMP thread pool deadlocks children on
+# their first tensor op (observed: actors parked in futex_do_wait for hours).
+# spawn gives every worker a clean interpreter and torch runtime.
+_mp = mp.get_context("spawn")
+
+# Abort a run if neither a transition nor an episode result arrives for this long.
+STALL_TIMEOUT_S = 300.0
+
 
 # ---------------------------------------------------------------------------
 # Pure helpers (unit-tested in tests/test_multi_agent.py)
@@ -101,6 +109,7 @@ def _actor_worker(
     seed: int,
 ) -> None:
     """Env-stepping process: epsilon-greedy acting only, no buffer, no learning."""
+    torch.set_num_threads(1)  # forward-only; leave cores to the learner
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -186,9 +195,9 @@ class SharedExperienceCoordinator:
 
         # ~226 KB per transition (two stacked-frame arrays); bound the queue so
         # backpressure on actors caps RAM at ~230 MB instead of growing unbounded
-        transition_queue: mp.Queue = mp.Queue(maxsize=1024)
-        result_queue: mp.Queue = mp.Queue()
-        weight_queues: List[mp.Queue] = [mp.Queue() for _ in range(n)]
+        transition_queue: mp.Queue = _mp.Queue(maxsize=1024)
+        result_queue: mp.Queue = _mp.Queue()
+        weight_queues: List[mp.Queue] = [_mp.Queue() for _ in range(n)]
 
         mario = Mario(
             state_dim=self.cfg.state_dim,
@@ -203,7 +212,7 @@ class SharedExperienceCoordinator:
             for i in range(n)
         ]
         processes = [
-            mp.Process(
+            _mp.Process(
                 target=_actor_worker,
                 args=(
                     i, self.cfg, per_actor, epsilons[i],
@@ -233,10 +242,17 @@ class SharedExperienceCoordinator:
         expected = n * per_actor
         recent_loss: Optional[float] = None
         t0 = time.time()
+        last_progress = time.time()
 
         while results_seen < expected:
             if not any(p.is_alive() for p in processes) and result_queue.empty():
                 print("[Shared] All actors exited.")
+                break
+            if time.time() - last_progress > STALL_TIMEOUT_S:
+                print(
+                    f"[Shared] STALL: no transitions or results for "
+                    f"{STALL_TIMEOUT_S:.0f}s — aborting run."
+                )
                 break
 
             # 1. Ingest a chunk of transitions into the single buffer
@@ -247,6 +263,7 @@ class SharedExperienceCoordinator:
                     break
                 mario.cache(*t)
                 transitions += 1
+                last_progress = time.time()
 
             # 2. One gradient step per learn_every transitions ingested
             target_steps = transitions // self.cfg.agent.learn_every
@@ -274,6 +291,7 @@ class SharedExperienceCoordinator:
                 r["wall"] = r["t"] - t0
                 history.append(r)
                 results_seen += 1
+                last_progress = time.time()
                 if results_seen % 10 == 0:
                     rewards = [h["reward"] for h in history[-20:]]
                     print(
@@ -316,6 +334,7 @@ def _pbt_worker(
     """Full agent (own env + buffer + learner). Reports to the coordinator every
     `pbt_interval` episodes with current weights/hyperparams; applies any
     exploit command (new weights + perturbed hyperparams) it receives."""
+    torch.set_num_threads(max(1, mp.cpu_count() // cfg.multi_agent.num_agents))
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -400,12 +419,12 @@ class PBTCoordinator:
         per_agent = max(1, episodes // n)
         save_dir.mkdir(parents=True, exist_ok=True)
 
-        result_queue: mp.Queue = mp.Queue()
-        command_queues: List[mp.Queue] = [mp.Queue() for _ in range(n)]
+        result_queue: mp.Queue = _mp.Queue()
+        command_queues: List[mp.Queue] = [_mp.Queue() for _ in range(n)]
         rng = random.Random(self.cfg.train.seed)
 
         processes = [
-            mp.Process(
+            _mp.Process(
                 target=_pbt_worker,
                 args=(
                     i, self.cfg, save_dir, per_agent,
@@ -428,14 +447,19 @@ class PBTCoordinator:
         expected = n * per_agent
         t0 = time.time()
 
+        last_progress = time.time()
         while results_seen < expected:
             if not any(p.is_alive() for p in processes) and result_queue.empty():
                 print("[PBT] All workers exited.")
+                break
+            if time.time() - last_progress > STALL_TIMEOUT_S:
+                print(f"[PBT] STALL: no results for {STALL_TIMEOUT_S:.0f}s — aborting run.")
                 break
             try:
                 r = result_queue.get(timeout=60)
             except queue_mod.Empty:
                 continue
+            last_progress = time.time()
 
             aid = r["agent_id"]
             means[aid] = r["mean20"]

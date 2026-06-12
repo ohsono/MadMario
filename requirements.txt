@@ -1,3 +1,7 @@
+# Python >= 3.13 REQUIRED: gym-super-mario-bros >= 8.0 and nes-py >= 9.0
+# (the gymnasium-API releases this codebase depends on) only publish wheels
+# for Python 3.13+. On older Pythons pip resolves to 7.4.0 and fails.
+
 # Core RL
 torch>=2.0
 numpy>=1.24
