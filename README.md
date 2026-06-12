@@ -8,7 +8,8 @@ a full pytest harness.
 
 📚 **Docs:** [project plan & revision history](docs/PLAN.md) ·
 [in-depth generation comparison](docs/COMPARISON.md) ·
-[theory & related work](docs/THEORY.md)
+[theory & related work](docs/THEORY.md) ·
+[evaluation results & plots](docs/EVALUATION.md)
 
 ---
 
