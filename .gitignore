@@ -2,7 +2,23 @@
 **/checkpoints
 *.npy
 .*
+
+# temp run logs
 runs/
+
 !.github/
 !.github/**
+
+# output video clips
 videos/
+
+# model checkpoint files
+*.chkpt
+
+# workspace
+madmario.egg-info
+
+# docs — exclude markdown and LaTeX source/output
+*.md
+*.tex
+*.pdf
