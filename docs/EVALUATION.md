@@ -109,6 +109,32 @@ to fit a 100 K+ buffer in RAM (8× smaller than float32), (b) save a
 Flag-get on 1-1 typically needs ~10 K episodes even for well-tuned DQN —
 the original tutorial trained for 40 K.
 
+### Fixes (a)+(b) verified: 1200-episode rerun
+
+Fixes (a) and (b) were implemented and the run relaunched at double budget
+(1200 episodes, 75 K uint8 buffer — the buffer now retains ~36 % of the
+209 K-transition stream vs 14 % before):
+
+| | 600 ep (15 K float32) | 1200 ep (75 K uint8 + best.chkpt) |
+|---|---|---|
+| peak 20-ep mean | 727 | **866** |
+| final 20-ep mean | **311 (collapse)** | 610 (stable) |
+| max episode reward | 1331 | **1903** |
+| best policy preserved? | no (end-only save) | yes — `best.chkpt` at the peak |
+| greedy eval of saved chkpt | 231 (post-collapse) | **826 mean / 1321 max** (10 eps) |
+| flag-gets | 0 | 0 |
+
+![Buffer fix comparison](plots/shared_buffer_fix.png)
+
+The late-run collapse is gone — the curve sags from its peak but holds
+around 500–610 instead of falling to baseline, confirming replay eviction
+as the dominant instability. Still no flag: greedy playback of the best
+policy consistently reaches the ~x≈1900 region (reward 1321–1903) and dies
+in the second half of the level. Remaining gap to the flag (x≈3161) is a
+*horizon* problem — γ=0.9 makes rewards >50 steps ahead nearly invisible —
+plus budget: fixes (c) prioritized replay and (d) γ=0.99 with a multi-
+thousand-episode run are the next lever.
+
 ## Reproduce
 
 ```bash
